@@ -122,12 +122,12 @@ const (
 	IntentGuildPresences
 	IntentGuildMessage
 	IntentGuildMessageReaction
-	IntentGuildMEssageTyping
+	IntentGuildMessageTyping
 	IntentDirectMessage
 	IntentDirectMessageReaction
 	IntentDirectMessageTyping
 
-	IntentALL = IntentGuild | IntentGuildMembers | IntentGuildBans | IntentGuildEmojis | IntentGuildintegrations | IntentGuildWebhooks | IntentGuildInvites | IntentGuildVoiceStates | IntentGuildPresences | IntentGuildMessage | IntentGuildMessageReaction | IntentGuildMEssageTyping | IntentDirectMessage | IntentDirectMessageReaction | IntentDirectMessageTyping
+	IntentALL = IntentGuild | IntentGuildMembers | IntentGuildBans | IntentGuildEmojis | IntentGuildintegrations | IntentGuildWebhooks | IntentGuildInvites | IntentGuildVoiceStates | IntentGuildPresences | IntentGuildMessage | IntentGuildMessageReaction | IntentGuildMessageTyping | IntentDirectMessage | IntentDirectMessageReaction | IntentDirectMessageTyping
 )
 
 const (

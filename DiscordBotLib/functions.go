@@ -17,6 +17,42 @@ import (
 	"github.com/gorilla/websocket"
 )
 
+// ================================ Utility section =====================================
+
+// ------------------------------------------
+//                    Utility
+// ------------------------------------------
+// Contains all utility functions that are will be used during event handling, parsing, making requests, etc.
+//
+
+func getEventHandler(h interface{}) EventHandler { // TODO: Complete
+	switch v := h.(type) {
+	case func(*Client):
+		return OnReady(v)
+	case func(*Client, Message):
+		return OnMessage(v)
+	case func(*Client, interface{}):
+		return interfaceEventHandler(v)
+	default:
+		return nil
+	}
+}
+
+func (c *Client) getEventPayload(p Payload) interface{} { // TODO: Complete
+	switch p.Type {
+	case "MESSAGE_CREATE":
+		m := Message{
+			ClientPTR:   c,
+			Author:      User{ClientPTR: c},
+			GuildMember: &GuildMember{ClientPTR: c},
+		}
+		json.Unmarshal(p.RawData, &m)
+		return m
+	default:
+		return nil
+	}
+}
+
 // ============================= Client section =========================================
 
 // ----------------------------------------
@@ -63,9 +99,24 @@ func NewClient() *Client {
 
 // Adds function that will be called on specific gateway event to the functions stack.
 // Enables itents depending on function type (see docs or types.go)
-func (c *Client) AddHandler(handler interface{}) error {
+func (c *Client) AddHandler(handler interface{}) {
+	if c.handlers == nil {
+		c.handlers = make(map[string]*EventHandler)
+	}
 
-	return nil
+	he := getEventHandler(handler)
+	if he != nil {
+		c.handlers[he.Type()] = &he
+	}
+}
+
+func (c *Client) GetAvialableHandlers() []string {
+	res := make([]string, 0)
+	for k := range c.handlers {
+		res = append(res, k)
+	}
+
+	return res
 }
 
 func (c *Client) SetIntent(intent int) error {
@@ -233,7 +284,7 @@ func (c *Client) heartbeat(interval int, ls <-chan int) { // TODO: Make zombied 
 	}
 }
 
-func (c *Client) listen(ls <-chan int) { // TODO: Correct function stopping
+func (c *Client) listen(ls <-chan int) {
 	for {
 
 		if c.LogLevel >= LogAll {
@@ -272,6 +323,7 @@ func (c *Client) listen(ls <-chan int) { // TODO: Correct function stopping
 
 		select {
 		default:
+			c.handleEvent(event)
 		case <-ls:
 			log.Println("Called interrupt, listening terminated. Number of goroutines running: ", runtime.NumGoroutine())
 			c.wG.Done()
@@ -317,8 +369,23 @@ func (c *Client) identify() error {
 }
 
 // Will be called when listiner get
-func (c *Client) handleEvent(payload Payload) error {
-	return nil
+func (c *Client) handleEvent(payload Payload) {
+	switch payload.Operation {
+	case GatewayOpHeartbeatACK:
+		c.Lock()
+		c.lastHeartbeatACK = uint64(time.Now().Unix())
+		c.Unlock()
+	case GatewayOpDispatch:
+		if ev, ok := c.handlers[payload.Type]; !ok && c.LogLevel >= LogWarnings {
+			log.Printf("Can't handle event %s.\n", payload.Type)
+		} else {
+			if c.LogLevel >= LogMessages {
+				log.Printf("Handling event %s.\n", payload.Type)
+			}
+			(*ev).Handle(c, c.getEventPayload(payload))
+		}
+	}
+
 }
 
 func (c *Client) resume() {
@@ -334,8 +401,6 @@ func (c *Client) updatePresence() {
 }
 
 func (c *Client) Stop() error {
-
-	// TODO: terminate heartbeating and listening
 
 	if c.LogLevel >= 4 {
 		log.Println("Commiting suicide!")
@@ -368,6 +433,7 @@ func (c *Client) init(token string) error {
 		return errors.New("error getting gateway")
 	}
 
+	go c.setupCloseHandler()
 	c.token = token
 
 	c.Lock()
@@ -379,6 +445,10 @@ func (c *Client) init(token string) error {
 
 	if c.authHeader == nil {
 		c.authHeader = &http.Header{}
+	}
+
+	if c.handlers == nil {
+		c.handlers = make(map[string]*EventHandler)
 	}
 
 	c.authHeader.Add("Authorization", ("Bot " + token))

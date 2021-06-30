@@ -8,7 +8,109 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-type Message struct {
+//? Mb, swap all nullable fields with pointers
+type Message struct { //TODO: Complete it
+	Id              int               `json:"id"`
+	ChannelId       int               `json:"channel_id"`
+	GuildID         *int              `json:"guild_id"`
+	Author          User              `json:"author"`
+	GuildMember     *GuildMember      `json:"member"`
+	Content         string            `json:"content"`
+	Timestamp       ISO8601Timestamp  `json:"timestamp"`
+	EditedTimestamp ISO8601Timestamp  `json:"edited_timestamp"`
+	TTS             bool              `json:"tts"`
+	MentionEveryone bool              `json:"mention_everyone"`
+	Mentions        []User            `json:"mentions"`
+	MentionRoles    []int             `json:"mention_roles"`
+	MentionChannels *[]ChannelMention `json:"mention_channels"`
+	Attachments     []Attachment      `json:"attachments"`
+	Embeds          []Embed           `json:"embeds"`
+	Reactions       *[]Reaction       `json:"reactions"`
+	// Nonce           string           `json:"nonce"`
+	// TODO: Make something with that
+	Pinned    bool `json:"pinned"`
+	WebhookId *int `json:"webhook_id"`
+	Type      int  `json:"type"` // TODO: Make constants for message types
+
+	ClientPTR *Client
+}
+
+type Emoji struct {
+	Id            int      `json:"id"`
+	Name          string   `json:"name"`
+	Roles         []RoleID `json:"Roles"`
+	User          User     `json:"user"`
+	RequireColons bool     `json:"require_colons"`
+	Managed       bool     `json:"managed"`
+	Animated      bool     `json:"animated"`
+	Available     bool     `json:"available"`
+}
+
+type Reaction struct {
+	Count int   `json:"count"`
+	Me    bool  `json:"me"`
+	Emoji Emoji `json:"emoji"`
+}
+
+type EmbedFooter struct {
+	Text         string `json:"text"`
+	IconURL      string `json:"icon_url"`
+	ProxyIconURL string `json:"proxy_icon_url"`
+}
+
+type EmbedField struct {
+	Name   string `json:"name"`
+	Value  string `json:"value"`
+	Inline bool   `json:"inline"`
+}
+
+type EmbedAuthor struct {
+	Name         string `json:"name"`
+	URL          string `json:"url"`
+	IconURL      string `json:"icon_url"`
+	ProxyIconURL string `json:"proxy_icon_url"`
+}
+
+type EmbedProvider struct {
+	Name string `json:"name"`
+	URL  string `json:"url"`
+}
+
+type EmbedImage struct {
+	URL      string `json:"url"`
+	ProxyURL string `json:"proxy_url"`
+	Height   int    `json:"height"`
+	Width    int    `json:"width"`
+}
+
+type EmbedVideo struct {
+	URL      string `json:"url"`
+	ProxyURL string `json:"proxy_url"`
+	Height   int    `json:"height"`
+	Width    int    `json:"width"`
+}
+
+type EmbedThumbnail struct {
+	URL      string `json:"url"`
+	ProxyURL string `json:"proxy_url"`
+	Height   int    `json:"height"`
+	Width    int    `json:"width"`
+}
+
+type Embed struct { // TODO: Make functions to create and maintain Embeds
+	Title       string           `json:"title"`
+	Type        string           `json:"type"`
+	Description string           `json:"description"`
+	URL         string           `json:"url"`
+	Timestamp   ISO8601Timestamp `json:"timestamp"`
+	Color       int              `json:"color"`
+	Footer      EmbedFooter      `json:"footer"`
+	Image       EmbedImage       `json:"image"`
+	Thumbnail   EmbedThumbnail   `json:"thumbnail"`
+	Video       EmbedVideo       `json:"video"`
+	Provider    EmbedProvider    `json:"provider"`
+	Author      EmbedAuthor      `json:"author"`
+	Fields      []EmbedField     `json:"fields"`
 }
 
 type ActivityTimestampsObject struct {
@@ -25,6 +127,8 @@ type ActivityObject struct {
 	ApplicationId Snowflake                `json:"application_id"`
 	Details       string                   `json:"details"`
 	State         string                   `json:"state"`
+
+	ClientPTR *Client
 }
 
 type IdentifyProperties struct {
@@ -38,6 +142,23 @@ type GatewayUpdatePresence struct {
 	Activities []ActivityObject `json:"activities"`
 	Status     string           `json:"status"`
 	AFK        bool             `json:"afk"`
+}
+
+type Attachment struct {
+	Id          int    `json:"id"`
+	Filename    string `json:"filename"`
+	ContentType string `json:"content_type"`
+	Size        int    `json:"size"`
+	URL         string `json:"url"`
+	ProxyURL    string `json:"proxy_url"`
+	Height      int    `json:"height"`
+	Width       int    `json:"width"`
+}
+type ChannelMention struct {
+	Id      int    `json:"id"`
+	GuildID int    `json:"guild_id"`
+	Type    int    `json:"type"`
+	Name    string `json:"string"`
 }
 
 type Identify struct {
@@ -63,6 +184,8 @@ type Payload struct {
 type Heartbeat struct {
 	Op int  `json:"op"`
 	D  *int `json:"d"`
+
+	ClientPTR *Client
 }
 
 type TeamMember struct {
@@ -113,6 +236,22 @@ type User struct {
 	Flags         int    `json:"flags"`
 	PremiumType   int    `json:"premium_type"`
 	PublicFlags   int    `json:"public_flags"`
+
+	ClientPTR *Client
+}
+
+type GuildMember struct {
+	User         User   `json:"user"`
+	Nick         string `json:"nick"`
+	Roles        []int  `json:"roles"`
+	JoinedAt     string `json:"joined_at"`
+	PremiumSince string `json:"premium_since"`
+	Deaf         bool   `json:"deaf"`
+	Mute         bool   `json:"mute"`
+	Pending      bool   `json:"pending"`
+	Permissions  string `json:"permissions"`
+
+	ClientPTR *Client
 }
 
 // Client is a base structure that represents your whole bot and methods that are allowed to it
@@ -133,6 +272,9 @@ type Client struct {
 	token             string // TODO: Make unexported!
 	heartbeatInterval int    // TODO: Make unexported!
 	lastSequence      int
+	lastHeartbeatACK  uint64
+
+	handlers map[string]*EventHandler
 
 	// information about application and it's owner
 	Owner User

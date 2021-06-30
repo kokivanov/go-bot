@@ -10,3 +10,16 @@ const (
 	ImageBaseUrl       = "https://cdn.discordapp.com/"
 	GetGatewayEndpoint = "/gateway"
 )
+
+const (
+	RichEmbed    = "rich"
+	ImageEmbed   = "image"
+	VideoEmbed   = "video"
+	GIFVEmbed    = "gifv"
+	ArticleEmbed = "article"
+	LinkEmbed    = "link"
+)
+
+// TODO: Add gateway constants
+
+// TODO: Add Eventa types constants
