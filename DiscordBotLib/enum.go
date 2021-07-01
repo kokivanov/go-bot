@@ -103,31 +103,23 @@ const (
 )
 
 const (
-	StatusOnline    = "online"
-	StatusDnD       = "dnd"
-	StatusAFK       = "idle"
-	StatusInvisible = "invisible"
-	StatusOffline   = "offline"
-)
-
-const (
 	IntentGuild = 1 << iota
 	IntentGuildMembers
 	IntentGuildBans
 	IntentGuildEmojis
-	IntentGuildintegrations
+	IntentGuildIntegrations
 	IntentGuildWebhooks
 	IntentGuildInvites
 	IntentGuildVoiceStates
 	IntentGuildPresences
 	IntentGuildMessage
-	IntentGuildMessageReaction
+	IntentGuildMessageReactions
 	IntentGuildMessageTyping
 	IntentDirectMessage
 	IntentDirectMessageReaction
 	IntentDirectMessageTyping
 
-	IntentALL = IntentGuild | IntentGuildMembers | IntentGuildBans | IntentGuildEmojis | IntentGuildintegrations | IntentGuildWebhooks | IntentGuildInvites | IntentGuildVoiceStates | IntentGuildPresences | IntentGuildMessage | IntentGuildMessageReaction | IntentGuildMessageTyping | IntentDirectMessage | IntentDirectMessageReaction | IntentDirectMessageTyping
+	IntentALL = IntentGuild | IntentGuildMembers | IntentGuildBans | IntentGuildEmojis | IntentGuildIntegrations | IntentGuildWebhooks | IntentGuildInvites | IntentGuildVoiceStates | IntentGuildPresences | IntentGuildMessage | IntentGuildMessageReactions | IntentGuildMessageTyping | IntentDirectMessage | IntentDirectMessageReaction | IntentDirectMessageTyping
 )
 
 const (

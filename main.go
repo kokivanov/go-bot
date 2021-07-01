@@ -10,11 +10,11 @@ import (
 )
 
 func OnMessage(c *dbl.Client, m dbl.Message) {
-	fmt.Print("\n\n\nGOT MESSAGE!!!!!!\n\n\n")
+	fmt.Printf("Got message from %s: %s\n", m.Author.Username, m.Content)
 }
 
 func OnReady(c *dbl.Client) {
-	return
+
 }
 
 func main() {
@@ -33,10 +33,8 @@ func main() {
 
 	client.LogLevel = 1024
 
-	client.SetIntent(512)
-
-	client.AddHandler(OnMessage)
-	client.AddHandler(OnReady)
+	client.AddHandler(OnMessage, dbl.EventMessageCreate)
+	client.AddHandler(OnReady, dbl.EventReady)
 	fmt.Println(client.GetAvialableHandlers())
 
 	client.Run(fmt.Sprintf("%s", conf["token"]))
