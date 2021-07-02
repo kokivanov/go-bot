@@ -139,6 +139,24 @@ const (
 	UserFlagTeamUser
 	UserFlagBugHunterTwo
 	UserFlag
+	_
+	ApplicationFlagGatewayPresence
+	ApplicationFlagGatewayPresenceLimited
+	ApplicationFlagGatewayGuildMembers
+	ApplicationFlagGatewayGuildMembersLimited
+	ApplicationFlagVertificationPendingGuildLimit
+	ApplicationFlagEmbedded
+)
+
+const (
+	MessageFlagCrossposted = 1 << iota
+	MessageFlagIsCrosspostedMessageFlagCrossposted
+	MessageFlagSupressEmbeds
+	MessageFlagSourceMessageDeleted
+	MessageFlagUrgent
+	MessageFlagHasThread
+	MessageFlagEphemeral
+	MessageFlagLoading
 )
 
 const (
@@ -146,4 +164,136 @@ const (
 	LogWarnings
 	LogMessages
 	LogAll
+)
+
+const (
+	MessageNotificationLevelAll = iota
+	MessageNotificationLevelMentions
+)
+
+const (
+	ExplicitContentFilterDisabled = iota
+	ExplicitContentFilterNoRoles
+	ExplicitContentFilterAll
+)
+
+const (
+	MFANone = iota
+	MFAElevated
+)
+
+const (
+	GuildVertificationLevelNone = iota
+	GuildVertificationLevelLow
+	GuildVertificationLevelMedium
+	GuildVertificationLevelHigh
+	GuildVertificationLevelVEryHigh
+)
+
+const (
+	GuildNSFWDefault = iota
+	GuildNSFWExplicit
+	GuildNSFWSafe
+	GuildNSFWAgeRestricted
+)
+
+const (
+	GuildPremiumTierNone = iota
+	GuildPremiumTier1
+	GuildPremiumTier2
+	GuildPremiumTier3
+)
+
+const (
+	SystemChannelSupressJoin = 1 << iota
+	SystemChannelSupressBoost
+	SystemChannelSupressTips
+)
+
+const (
+	ApplicationCommandSubcommand = iota + 1
+	ApplicationCommandSubcommandGroup
+	ApplicationCommandString
+	ApplicationCommandInteger
+	ApplicationCommandBoolean
+	ApplicationCommandUser
+	ApplicationCommandChannel
+	ApplicationCommandRole
+	ApplicationCommandMentionable
+)
+
+const (
+	ChannelGuildText = iota
+	ChannelDM
+	ChannelGuildVoice
+	ChannelGroupDM
+	ChannelGuildCategory
+	ChannelGuildNews
+	ChannelGuildStore
+	_
+	_
+	_
+	ChannelGuildNewsThread
+	ChannelPublicThread
+	ChannelPrivateThread
+	ChannelStageVoice
+)
+
+const (
+	VideoQualityAuto = 1
+	VideoQualityFull = 2
+)
+
+const (
+	MessageDefault = iota
+	MessageRecipientAdd
+	MessageRecipientRemove
+	MessageCall
+	MessageChannelNameChange
+	MessageChannelIconChange
+	MessageChannelPinnedMessage
+	MessageGuildMemberJoin
+	MessageUserPremiumGuilSub
+	MessageUserPremiumGuilSub1
+	MessageUserPremiumGuilSub2
+	MessageUserPremiumGuilSub3
+	MessageChannelFollowAdd
+	_
+	MessageGuildDiscoveryDisqualified
+	MessageGuildDiscoveryRequalified
+	MessageGuildDiscoveryGracePeriodInitialWarning
+	MessageGuildDiscoveryGracePeriodFinalWarning
+	MessageThreadCreated
+	MessageReply
+	MessageApplicationCommand
+	MessageThreadStartedMessage
+	MessageGuildInviteReminder
+)
+
+const (
+	MessageStickerPNG = iota + 1
+	MessageStickerAPNG
+	MessageStickerLOTTIE
+)
+
+const (
+	InteractionCallbackPong                     = iota + 1
+	InteractionCallbackChannelMessageWithSource = iota + 3
+	InteractionCallbackDeferredChannelMessageWithSource
+	InteractionCallbackDefferedUpdateMessage
+	InteractionCallbackUpdateMessage
+)
+
+const (
+	ButtonPrimary = iota + 1
+	ButtonSecondary
+	ButtonSuccess
+	ButtonDanger
+	ButtonLink
+)
+
+const (
+	ComponentActionRow = iota + 1
+	ComponentButton
+	ComponentSelectMenu
 )

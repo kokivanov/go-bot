@@ -6,296 +6,31 @@ import (
 
 //? Mb, swap all nullable fields with pointers
 
-type GuildChannel struct { // TODO: omitempty
-	ID                         Snowflake    `json:"id"`
-	GuildID                    *Snowflake   `json:"guild_id"`
-	Name                       string       `json:"name"`
-	Type                       int          `json:"type"`
-	Position                   *int         `json:"position"`
-	PermissionOverwrites       *[]Overwrite `json:"permission_overwrites"`
-	RateLimitPerUser           int          `json:"rate_limit_per_user"`
-	Nsfw                       *bool        `json:"nsfw"`
-	Topic                      *string      `json:"topic"`
-	LastMessageID              *Snowflake   `json:"last_message_id"`
-	ParentID                   Snowflake    `json:"parent_id"`
-	DefaultAutoArchiveDuration int          `json:"default_auto_archive_duration"`
-
-	ClientPTR *Client `json:"-"`
+type Interaction struct {
+	TTS            *bool        `json:"tts,omitempty"`
+	Content        string       `json:"content,omitempty"`
+	Embeds         *[]Embed     `json:"embeds,omitempty"`
+	AllowdMentions *bool        `json:"allowed_mentions,omitempty"`
+	Flags          int          `json:"flags,omitempty"`
+	Components     *[]Component `json:"components,omitempty"`
 }
 
-type VoiceChannel struct { // TODO: omitempty
-	ID                   Snowflake    `json:"id"`
-	GuildID              *Snowflake   `json:"guild_id"`
-	Name                 string       `json:"name"`
-	Type                 int          `json:"type"`
-	Nsfw                 bool         `json:"nsfw"`
-	Position             int          `json:"position"`
-	PermissionOverwrites *[]Overwrite `json:"permission_overwrites"`
-	Bitrate              int          `json:"bitrate"`
-	UserLimit            int          `json:"user_limit"`
-	ParentID             *Snowflake   `json:"parent_id"`
-	RTCRegion            *Snowflake   `json:"rtc_region"`
-
-	ClientPTR *Client `json:"-"`
-}
-
-type ThreadChannel struct { // TODO: omitempty
-	ID                         Snowflake       `json:"id"`
-	GuildID                    Snowflake       `json:"guild_id"`
-	ParentID                   *Snowflake      `json:"parent_id"`
-	OwnerID                    Snowflake       `json:"owner_id"`
-	Name                       string          `json:"name"`
-	Type                       int             `json:"type"`
-	LastMessageID              *Snowflake      `json:"last_message_id"`
-	MessageCount               int             `json:"message_count"`
-	MemberCount                int             `json:"member_count"`
-	RateLimitPerUser           *int            `json:"rate_limit_per_user"`
-	Member                     *ThreadMember   `json:"member"`
-	ThreadMetadata             *ThreadMetadata `json:"thread_metadata"`
-	DefaultAutoArchiveDuration int             `json:"default_auto_archive_duration"`
-
-	ClientPTR *Client `json:"-"`
-}
-
-type DMChannel struct { // TODO: omitempty
-	LastMessageID *Snowflake  `json:"last_message_id"`
-	Type          int         `json:"type"`
-	ID            Snowflake   `json:"id"`
-	Recipients    []Recipient `json:"recipients"`
-
-	ClientPTR *Client `json:"-"`
-}
-
-type GroupDMChannel struct { // TODO: omitempty
-	Name          string       `json:"name"`
-	Icon          *string      `json:"icon"`
-	Recipients    *[]Recipient `json:"recipients"`
-	LastMessageID *Snowflake   `json:"last_message_id"`
-	Type          int          `json:"type"`
-	ID            Snowflake    `json:"id"`
-	OwnerID       Snowflake    `json:"owner_id"`
-
-	ClientPTR *Client `json:"-"`
-}
-
-type ThreadMember struct { // TODO: omitempty
-	ID            *Snowflake       `json:"id"`
-	UserID        *Snowflake       `json:"user_id"`
-	JoinTimestamp ISO8601Timestamp `json:"join_timestamp"`
-	Flags         int              `json:"flags"`
-}
-
-type ThreadMetadata struct { // TODO: omitempty
-	Archived            bool   `json:"archived"`
-	AutoArchiveDuration int64  `json:"auto_archive_duration"`
-	ArchiveTimestamp    string `json:"archive_timestamp"`
-	Locked              bool   `json:"locked"`
-}
-
-type StoreChannel struct { // TODO: omitempty
-	ID                   Snowflake    `json:"id"`
-	GuildID              Snowflake    `json:"guild_id"`
-	Name                 string       `json:"name"`
-	Type                 int          `json:"type"`
-	Position             int          `json:"position"`
-	PermissionOverwrites *[]Overwrite `json:"permission_overwrites"`
-	Nsfw                 *bool        `json:"nsfw"`
-	ParentID             *Snowflake   `json:"parent_id"`
-
-	ClientPTR *Client `json:"-"`
-}
-
-type ChannelCategory struct { // TODO: omitempty
-	PermissionOverwrites *[]Overwrite `json:"permission_overwrites"`
-	Name                 string       `json:"name"`
-	ParentID             *Snowflake   `json:"parent_id"`
-	Nsfw                 bool         `json:"nsfw"`
-	Position             int          `json:"position"`
-	GuildID              Snowflake    `json:"guild_id"`
-	Type                 int          `json:"type"`
-	ID                   Snowflake    `json:"id"`
-
-	ClientPTR *Client `json:"-"`
-}
-
-type Recipient struct { // TODO: omitempty
-	Username      string    `json:"username"`
-	Discriminator int       `json:"discriminator"`
-	ID            Snowflake `json:"id"`
-	Avatar        *string   `json:"avatar"`
-
-	ClientPTR *Client `json:"-"`
-}
-
-type Overwrite struct { // TODO: omitempty
-	ID    Snowflake `json:"id"`
-	Type  int       `json:"type"`
-	Allow string    `json:"allow"`
-	Deny  string    `json:"deny"`
-}
-
-type MessageStickerItem struct { // TODO: omitempty
-	ID         Snowflake `json:"ID"`
-	Name       string    `json:"name"`
-	FormatType int       `json:"format_type"`
-}
-
-type Sticker struct { // TODO: omitempty
-	ID          Snowflake  `json:"ID"`
-	PackID      *Snowflake `json:"pack_id"`
-	Name        string     `json:"name"`
-	Description string     `json:"description"`
-	Tags        string     `json:"tags"`
-	FormatType  int        `json:"format_type"`
-	Available   *bool      `json:"available"`
-	GuildID     *int       `json:"guild_ID"`
-	User        *User      `json:"user"`
-	SortValue   *int       `json:"sort_value"`
-}
-
-type MessageInteraction struct { // TODO: omitempty
-	TTS            *bool        `json:"tts"`
-	Content        *string      `json:"content"`
-	Embeds         *[]Embed     `json:"embeds"`
-	AllowdMentions *bool        `json:"allowed_mentions"`
-	Flags          *int         `json:"flags"`
-	Components     *[]Component `json:"components"`
-}
-
-type Component struct { // TODO: omitempty
+type Component struct {
 	Type       int          `json:"type"`
-	Style      *int         `json:"style"`
-	Label      *string      `json:"label"`
-	Emoji      *Emoji       `json:"emoji"`
-	CustomID   *int         `json:"custom_ID"`
-	URL        *string      `json:"url"`
-	Disabled   *bool        `json:"daisabled"`
-	Components *[]Component `json:"components"`
-}
-
-type MessageReference struct { // TODO: omitempty
-	ChannelID       *string `json:"channel_ID"`
-	GuildID         *string `json:"guild_ID"`
-	MessageID       *string `json:"message_ID"`
-	FailIfNotExists *bool   `json:"fail_if_not_exists"`
-
-	ClientPTR *Client `json:"-"`
-}
-
-type MessageActivity struct { // TODO: omitempty
-	Type    int    `json:"type"`
-	PartyID string `json:"party_ID"`
-}
-
-type Emoji struct { // TODO: omitempty
-	ID            int      `json:"ID"`
-	Name          string   `json:"name"`
-	Roles         []RoleID `json:"Roles"`
-	User          User     `json:"user"`
-	RequireColons bool     `json:"require_colons"`
-	Managed       bool     `json:"managed"`
-	Animated      bool     `json:"animated"`
-	Available     bool     `json:"available"`
-
-	ClientPTR *Client `json:"-"`
-}
-
-type Reaction struct { // TODO: omitempty
-	Count int   `json:"count"`
-	Me    bool  `json:"me"`
-	Emoji Emoji `json:"emoji"`
-}
-
-type EmbedFooter struct { // TODO: omitempty
-	Text         string `json:"text"`
-	IconURL      string `json:"icon_url"`
-	ProxyIconURL string `json:"proxy_icon_url"`
-}
-
-type EmbedField struct { // TODO: omitempty
-	Name   string `json:"name"`
-	Value  string `json:"value"`
-	Inline bool   `json:"inline"`
-}
-
-type EmbedAuthor struct { // TODO: omitempty
-	Name         string `json:"name"`
-	URL          string `json:"url"`
-	IconURL      string `json:"icon_url"`
-	ProxyIconURL string `json:"proxy_icon_url"`
-}
-
-type EmbedProvIDer struct { // TODO: omitempty
-	Name string `json:"name"`
-	URL  string `json:"url"`
-}
-
-type EmbedImage struct { // TODO: omitempty
-	URL      string `json:"url"`
-	ProxyURL string `json:"proxy_url"`
-	Height   int    `json:"height"`
-	WIDth    int    `json:"wIDth"`
-}
-
-type EmbedVIDeo struct { // TODO: omitempty
-	URL      string `json:"url"`
-	ProxyURL string `json:"proxy_url"`
-	Height   int    `json:"height"`
-	WIDth    int    `json:"wIDth"`
-}
-
-type EmbedThumbnail struct { // TODO: omitempty
-	URL      string `json:"url"`
-	ProxyURL string `json:"proxy_url"`
-	Height   int    `json:"height"`
-	WIDth    int    `json:"wIDth"`
-}
-
-// TODO: omitempty
-type Embed struct { // TODO: Make functions to create and maintain Embeds
-	Title       string           `json:"title"`
-	Type        string           `json:"type"`
-	Description string           `json:"description"`
-	URL         string           `json:"url"`
-	Timestamp   ISO8601Timestamp `json:"timestamp"`
-	Color       int              `json:"color"`
-	Footer      *EmbedFooter     `json:"footer"`
-	Image       *EmbedImage      `json:"image"`
-	Thumbnail   *EmbedThumbnail  `json:"thumbnail"`
-	VIDeo       *EmbedVIDeo      `json:"vIDeo"`
-	ProvIDer    *EmbedProvIDer   `json:"provIDer"`
-	Author      *EmbedAuthor     `json:"author"`
-	Fields      []EmbedField     `json:"fields"`
-}
-
-type IdentifyProperties struct { // TODO: omitempty
-	Os      string `json:"$os"`
-	Browser string `json:"$browser"`
-	Device  string `json:"$device"`
+	Style      *int         `json:"style,omitempty"`
+	Label      string       `json:"label,omitempty"`
+	Emoji      *Emoji       `json:"emoji,omitempty"`
+	CustomID   string       `json:"custom_id,omitempty"`
+	URL        *string      `json:"url,omitempty"`
+	Disabled   *bool        `json:"daisabled,omitempty"`
+	Components *[]Component `json:"components,omitempty"`
 }
 
 type GatewayUpdatePresence struct { // TODO: omitempty
-	Since      int              `json:"since"`
+	Since      *int             `json:"since"`
 	Activities []ActivityObject `json:"activities"`
 	Status     string           `json:"status"`
 	AFK        bool             `json:"afk"`
-}
-
-type Attachment struct { // TODO: omitempty
-	ID          int    `json:"ID"`
-	Filename    string `json:"filename"`
-	ContentType string `json:"content_type"`
-	Size        int    `json:"size"`
-	URL         string `json:"url"`
-	ProxyURL    string `json:"proxy_url"`
-	Height      int    `json:"height"`
-	WIDth       int    `json:"wIDth"`
-}
-type ChannelMention struct { // TODO: omitempty
-	ID      int    `json:"ID"`
-	GuildID int    `json:"guild_ID"`
-	Type    int    `json:"type"`
-	Name    string `json:"string"`
 }
 
 type Resume struct { // TODO: omitempty
@@ -328,53 +63,91 @@ type RequestGuildMembersPayloadQuery struct { // TODO: omitempty
 
 type Payload struct { // TODO: omitempty
 	Operation int             `json:"op"`
-	Sequence  int             `json:"s"`
-	Type      string          `json:"t"`
-	RawData   json.RawMessage `json:"d"`
+	Sequence  int64           `json:"s,omitempty"`
+	Type      string          `json:"t,omitempty"`
+	RawData   json.RawMessage `json:"d,omitempty"`
 	Struct    interface{}     `json:"-"`
 }
 
 type Heartbeat struct { // TODO: omitempty
-	Op int  `json:"op"`
-	D  *int `json:"d"`
+	Op int    `json:"op"`
+	D  *int64 `json:"d"`
 
 	ClientPTR *Client `json:"-"`
 }
 
 type TeamMember struct { // TODO: omitempty
-	MembershipState int      `json:"membership_state"`
-	Permissions     []string `json:"permissions"`
-	TeamID          int      `json:"team_ID"`
-	User            User     `json:"user"`
+	MembershipState int       `json:"membership_state"`
+	Permissions     []string  `json:"permissions"`
+	TeamID          Snowflake `json:"team_id"`
+	User            User      `json:"user"`
 }
 
 type Team struct { // TODO: omitempty
-	Icon        string       `json:"icon"`
-	ID          int          `json:"ID"`
+	Icon        *string      `json:"icon"`
+	ID          Snowflake    `json:"id"`
 	Members     []TeamMember `json:"members"`
 	Name        string       `json:"name"`
-	OwnerUserID int          `json:"owner_user_ID"`
+	OwnerUserID Snowflake    `json:"owner_user_id"`
 }
 
-type Application struct { // TODO: omitempty
-	ID                  int      `json:"ID"`
-	Name                string   `json:"name"`
-	Icon                string   `json:"icon"`
-	Description         string   `json:"description"`
-	RPCOrigins          []string `json:"rpc_origins"`
-	BotPublic           bool     `json:"bot_public"`
-	BotRequireCodeGrant bool     `json:"bot_require_code_grant"`
-	TermsOfServiceURL   string   `json:"terms_of_service_url"`
-	PrivacyPolicyURL    string   `json:"privacy_policy_url"`
-	Owner               User     `json:"owner"`
-	Summary             string   `json:"summary"`
-	VertifyKey          string   `json:"verify_key"`
-	Team                Team     `json:"team"`
-	GuildID             int      `json:"guild_ID"`
-	PrimarySkuID        int      `json:"primary_sku_ID"`
-	Slug                string   `json:"slug"`
-	CoverImage          string   `json:"cover_image"`
-	Flags               int      `json:"flags"`
+type Application struct {
+	ID                  Snowflake `json:"id"`
+	Name                string    `json:"name"`
+	Icon                string    `json:"icon"`
+	Description         string    `json:"description"`
+	RPCOrigins          *[]string `json:"rpc_origins,omitempty"`
+	BotPublic           bool      `json:"bot_public"`
+	BotRequireCodeGrant bool      `json:"bot_require_code_grant"`
+	TermsOfServiceURL   string    `json:"terms_of_service_url,omitempty"`
+	PrivacyPolicyURL    string    `json:"privacy_policy_url,omitempty"`
+	Owner               *User     `json:"owner,omitempty"`
+	Summary             string    `json:"summary"`
+	VertifyKey          string    `json:"verify_key"`
+	Team                *Team     `json:"team"`
+	GuildID             Snowflake `json:"guild_ID,omitempty"`
+	PrimarySkuID        Snowflake `json:"primary_sku_ID,omitempty"`
+	Slug                string    `json:"slug,omitempty"`
+	CoverImage          string    `json:"cover_image,omitempty"`
+	Flags               int       `json:"flags,omitempty"`
+}
+
+type ApplicationCommand struct {
+	ID                Snowflake                   `json:"id"`
+	ApplicationID     Snowflake                   `json:"application_id"`
+	GuildID           *Snowflake                  `json:"guild_id,omitempty"`
+	Name              string                      `json:"name"`              // TODO: validate with regex ("^[\w-]{1,32}$")
+	Description       string                      `json:"description"`       // TODO: max 100 char
+	Options           *[]ApplicationCommandOption `json:"options,omitempty"` // TODO: Required options must be listed before optional options
+	DefaultPermission bool                        `json:"default_permission,omitempty"`
+}
+
+type ApplicationCommandOption struct {
+	Type        int                               `json:"type"`
+	Name        string                            `json:"name"`        // TODO: validate with regex ("^[\w-]{1,32}$")
+	Description string                            `json:"description"` // TODO: max 100 char
+	Requred     *bool                             `json:"required,omitempty"`
+	Choices     *[]ApplicationCommandOptionChoice `json:"choices,omitempty"`
+	Options     *[]ApplicationCommandOption       `json:"options,omitempty"`
+}
+
+type ApplicationCommandOptionChoice struct {
+	Name  string      `json:"name"`
+	Value interface{} `json:"value"` // TODO: Validate string or int
+}
+
+type UnavailableGuild struct {
+	ID          Snowflake `json:"id"`
+	Unavailable bool      `json:"unavailable"`
+}
+
+type Ready struct {
+	GatewayVersion int                 `json:"v"`
+	User           *User               `json:"user"`
+	Guilds         *[]UnavailableGuild `json:"guilds"`
+	SessionID      string              `json:"session_id"`
+	Shard          *[2]int             `json:"shard,omitempty"`
+	Application    *Application        `json:"application"`
 }
 
 // Represents User object

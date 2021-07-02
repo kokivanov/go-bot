@@ -13,7 +13,7 @@ func OnMessage(c *dbl.Client, m dbl.Message) {
 	fmt.Printf("Got message from %s: %s\n", m.Author.Username, m.Content)
 }
 
-func OnReady(c *dbl.Client) {
+func OnReady(c *dbl.Client, r dbl.Ready) {
 
 }
 
@@ -37,6 +37,5 @@ func main() {
 	client.AddHandler(OnReady, dbl.EventReady)
 	fmt.Println(client.GetAvialableHandlers())
 
-	client.Run(fmt.Sprintf("%s", conf["token"]))
-
+	client.Run(fmt.Sprintf("%s", conf["token"]), nil)
 }

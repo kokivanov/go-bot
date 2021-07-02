@@ -19,13 +19,10 @@ func getEventIntent(t string) int {
 	switch t {
 	case EventMessageCreate, EventMessageDelete, EventMessageUpdate:
 		return (IntentGuildMessage | IntentDirectMessage)
-
 	case EventChannelPinsUpdate:
 		return (IntentDirectMessage | IntentGuild)
-
 	case EventMessageDeleteBulk:
 		return IntentGuildMessage
-
 	case EventTypingStart:
 		return (IntentGuildMessageTyping | IntentDirectMessageTyping)
 	case EventGuildUpdate, EventGuildCreate, EventGuildDelete, EventGuildRoleCreate, EventGuildRoleUpdate, EventGuildRoleDelete, EventChannelCreate, EventChannelUpdate, EventChannelDelete, EventThreadCreate, EventThreadDelete, EventThreadUpdate, EventThreadListSync, EventThreadMembersUpdate, EventStageInstanceCreate, EventStageInstanceDelete, EventStageInstanceUpdate:
@@ -55,19 +52,26 @@ func getEventIntent(t string) int {
 
 /* Returns EventHandler interface{} depending on provided function
 In order to add custom events you must add context calling of functions:
-	 (T *YourHandler) Handle(*Client, interface{}) // Passes *Client and passes and adapts interface{} to your function
-	 (T *YourHandler) Type() // Returns type of function
+	 (T YourHandler) Handle(*Client, interface{}) // Passes *Client and passes and adapts interface{} to your function
+	 (T YourHandler) Type() // Returns type of function
 Example:
 	type OnMessage func(*Client, GuildMessage)
 	func (om OnMessage) Handle(c *Client, i interface{}) {
 		om(c, i.(GuildMessage))
 	}
 	func (om OnMessage) Type() string {
-		return "MESSAGE_CREATE"
+		return EventMessageCreate
 	}*/
 func getEventHandler(h interface{}, Type string) EventHandler { // TODO: Complete
 	switch v := h.(type) {
 	case func(*Client):
+		switch Type {
+		case EventResumed:
+			return OnResumed(v)
+		default:
+			return nil
+		}
+	case func(*Client, Ready):
 		switch Type {
 		case EventReady:
 			return OnReady(v)
@@ -96,6 +100,13 @@ func (c *Client) getEventPayload(p Payload) interface{} { // TODO: Complete
 			GuildMember: &GuildMember{ClientPTR: c},
 		}
 		json.Unmarshal(p.RawData, &m)
+		return m
+	case EventReady:
+		m := Ready{}
+		json.Unmarshal(p.RawData, &m)
+		c.Me = *m.User
+		c.MeApp = *m.Application
+		c.SessionID = string(m.SessionID)
 		return m
 	default:
 		return nil

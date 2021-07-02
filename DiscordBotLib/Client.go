@@ -19,6 +19,7 @@ import (
 	"os"
 	"os/signal"
 	"runtime"
+	"strconv"
 	"sync"
 	"syscall"
 	"time"
@@ -37,6 +38,12 @@ type Identify struct {
 	Presence       *UpdatePresence `json:"presence,omitempty"`
 }
 
+type IdentifyProperties struct {
+	Os      string `json:"$os"`
+	Browser string `json:"$browser"`
+	Device  string `json:"$device"`
+}
+
 type UpdatePresence struct {
 	Since      *int              `json:"since"`
 	Activities *[]ActivityObject `json:"activities"`
@@ -53,30 +60,31 @@ type Client struct { // TODO: omitempty
 	wG        sync.WaitGroup
 
 	// Struncts that are used to work with api
-	wsGateway  string // TODO: Make unexported!
+	wsGateway  string
 	wsConn     *websocket.Conn
 	httpClient *http.Client
 	authHeader *http.Header
 
 	// Discord related fields
 	intent            int
-	token             string // TODO: Make unexported!
-	heartbeatInterval int    // TODO: Make unexported!
-	lastSequence      int
+	token             string
+	heartbeatInterval int
+	lastSequence      int64
 	lastHeartbeatACK  uint64
+	SessionID         string
 
 	handlers map[string]*EventHandler
 
 	// information about application and it's owner
 	Owner User
-	Me    Application
+	MeApp Application
+	Me    User
 
-	// Functions that will be called on events
-	OnMessage *OnMessage
-
-	LogLevel  int
-	state     uint8
-	interrupt chan int
+	LogLevel             int
+	state                uint8
+	interrupt            chan int
+	ReconnectMaxAttempts uint16
+	currentAttempt       uint16
 
 	// TODO: Task Queqe
 }
@@ -86,23 +94,44 @@ func (c *Client) setupCloseHandler() {
 	cc := make(chan os.Signal, 3)
 	signal.Notify(cc, os.Interrupt, syscall.SIGTERM)
 	<-cc
+	if c.state == 2 {
+		c.wG.Done()
+		c.wG.Done()
+	}
+	c.state = 3
 	fmt.Println("\r- Ctrl+C pressed in Terminal")
 	c.Stop()
 }
 
 /* Runs your bot with provided token
 Initializes all required veriables, spawns goroutines listen and heratbeat and prevents app from early termination*/
-func (c *Client) Run(token string) error {
-	c.interrupt = make(chan int, 2)
+func (c *Client) Run(token string, wg *sync.WaitGroup) error {
 
-	c.wG.Add(2)
-	//go c.setupCloseHandler()
-	if err := c.init(token); err != nil {
-		return err
+	if c.state == 1 || c.wsConn != nil {
+		return errors.New("already running")
 	}
-	go c.heartbeat(c.heartbeatInterval, c.interrupt)
-	go c.listen(c.interrupt)
-	c.wG.Wait()
+
+	err := c.Resume()
+
+	if err != nil && c.LogLevel >= LogWarnings {
+		log.Printf("Can't resume: %s", err.Error())
+
+		c.interrupt = make(chan int, 2)
+
+		c.wG.Add(2)
+		//go c.setupCloseHandler()
+		if err := c.init(token); err != nil {
+			return err
+		}
+		go c.heartbeat(c.heartbeatInterval, c.interrupt)
+		go c.listen(c.interrupt)
+		c.wG.Wait()
+
+		if wg != nil {
+			wg.Done()
+		}
+	}
+
 	return nil
 }
 
@@ -198,15 +227,27 @@ func (c *Client) connect() error {
 
 	/* Oppening gateway and connecting to it */
 	var err error
+	if c.LogLevel >= LogAll {
+		log.Printf("Creating dialer")
+	}
 	c.wsConn, _, err = websocket.DefaultDialer.Dial(fmt.Sprintf("%s?v=%d&encoding=%s", c.wsGateway, GatewayVersion, GatewayEncoding), header)
 	if err != nil {
-		log.Fatal("Error occured while connecting to websocket!\n\n", err)
+		return err
 	}
 
+	c.wsConn.SetCloseHandler(func(code int, text string) error {
+		log.Println("Closing gateway")
+		return nil
+	})
+
 	/* Reading first message, it must be Opcode 10 Hello, see https://discord.com/developers/docs/topics/gateway#connecting-to-the-gateway for more info*/
+	if c.LogLevel >= LogAll {
+		log.Printf("reading opcode hello")
+	}
+
 	mt, m, err := c.wsConn.ReadMessage()
 	if err != nil {
-		log.Fatal("Error occured while reading first message!\n\n", err)
+		return err
 	}
 
 	if mt == websocket.BinaryMessage {
@@ -221,6 +262,7 @@ func (c *Client) connect() error {
 
 	if err = decoder.Decode(&e); err != nil {
 		fmt.Printf("error decoding websocket message, %s \n", err)
+		return err
 	}
 
 	if c.LogLevel >= 8 {
@@ -267,7 +309,8 @@ func (c *Client) GetState() uint8 {
 }
 
 /*As discribed at discord developers portal
-https://discord.com/developers/docs/topics/gateway#heartbeat*/
+https://discord.com/developers/docs/topics/gateway#heartbeat
+*/
 func (c *Client) heartbeat(interval int, ls <-chan int) { // TODO: Make zombied connection check!
 
 	tk := time.NewTicker(time.Duration(interval) * time.Millisecond)
@@ -282,7 +325,10 @@ func (c *Client) heartbeat(interval int, ls <-chan int) { // TODO: Make zombied 
 			}
 
 			if c.wsConn == nil {
-				c.wG.Done()
+				if c.state == 3 {
+					c.wG.Done()
+				}
+
 				return
 			}
 
@@ -291,7 +337,9 @@ func (c *Client) heartbeat(interval int, ls <-chan int) { // TODO: Make zombied 
 			}
 
 			if c.state != 1 {
-				c.wG.Done()
+				if c.state == 3 {
+					c.wG.Done()
+				}
 				return
 			}
 
@@ -306,7 +354,9 @@ func (c *Client) heartbeat(interval int, ls <-chan int) { // TODO: Make zombied 
 
 		case <-ls:
 			log.Println("Called interrupt, heartbeating terminated. Number of goroutines running: ", runtime.NumGoroutine())
-			c.wG.Done()
+			if c.state == 3 {
+				c.wG.Done()
+			}
 			return
 		}
 	}
@@ -322,22 +372,42 @@ func (c *Client) listen(ls <-chan int) {
 		}
 
 		if c.wsConn == nil {
-			log.Println("Websocketconnection termanated")
-			c.wG.Done()
+			log.Println("Websocket connection terminated")
+			if c.state == 3 {
+				c.wG.Done()
+				return
+			}
+
+			if c.state == 2 {
+				return
+			}
 			return
 		}
 
 		if c.state != 1 {
 			log.Println("Client isn't in working state")
-			c.wG.Done()
+			if c.state == 3 {
+				c.wG.Done()
+				return
+			}
+
+			if c.state == 2 {
+				return
+			}
 			return
 		}
 
 		mt, m, err := c.wsConn.ReadMessage()
 		if err != nil {
 			log.Printf("Error occured while listening to message!\n %v", err.Error())
-			c.wG.Done()
-			return
+			if c.state == 3 {
+				c.wG.Done()
+				return
+			}
+
+			if c.state == 2 {
+				return
+			}
 		}
 		if mt == websocket.BinaryMessage {
 			fmt.Println("I don't know how to handle binary message!")
@@ -346,21 +416,28 @@ func (c *Client) listen(ls <-chan int) {
 
 		event := Payload{}
 
-		c.Lock()
-		c.lastSequence = event.Sequence
-		c.Unlock()
-
 		json.Unmarshal(m, &event)
 		if c.LogLevel >= LogAll {
 			log.Printf("Got %v event %v with sequence %v: %s", event.Operation, event.Type, event.Sequence, string(event.RawData))
 		}
+
+		c.Lock()
+		c.lastSequence = event.Sequence
+		c.Unlock()
 
 		select {
 		default:
 			go c.handleEvent(event)
 		case <-ls:
 			log.Println("Called interrupt, listening terminated. Number of goroutines running: ", runtime.NumGoroutine())
-			c.wG.Done()
+			if c.state == 3 {
+				c.wG.Done()
+				return
+			}
+
+			if c.state == 2 {
+				return
+			}
 			return
 		}
 	}
@@ -395,7 +472,9 @@ func (c *Client) identify() error {
 	c.wsMutex.Unlock()
 
 	if err != nil {
-		c.state = 2
+		if c.state != 3 {
+			c.state = 2
+		}
 		return err
 	}
 
@@ -422,19 +501,114 @@ func (c *Client) handleEvent(payload Payload) {
 
 }
 
-func (c *Client) resume() {
+type resume struct {
+	Op   int `json:"op"`
+	Data struct {
+		Token     string `json:"token"`
+		SessionID string `json:"session_id"`
+		Sequence  int64  `json:"seq"`
+	} `json:"d"`
+}
+
+func (c *Client) Resume() error {
+
+	c.Stop()
+
+	c.currentAttempt = 0
+
+	if c.state != 3 {
+		c.state = 2
+	}
+
+	if c.lastSequence == 0 {
+		log.Printf("can't resume, last sequence %v", c.lastSequence)
+		err := fmt.Errorf("can't resume, last sequence %v", c.lastSequence)
+		return err
+	}
+
+	for {
+		c.connect()
+
+		c.Lock()
+		res := resume{}
+		res.Op = GatewayOpResume
+		res.Data.Sequence = int64(c.lastSequence)
+		res.Data.SessionID = c.SessionID
+		res.Data.Token = c.token
+
+		c.wsMutex.Lock()
+		log.Printf("Resuming with struct: \n%#v\n", res)
+		err := c.wsConn.WriteJSON(res)
+		c.wsMutex.Unlock()
+
+		if err != nil {
+			log.Printf("Error occured while resumin, attempt %v", c.currentAttempt)
+		}
+
+		if c.ReconnectMaxAttempts <= c.currentAttempt {
+			c.Unlock()
+			c.wG.Done()
+			c.wG.Done()
+			return fmt.Errorf("hit max reconnect attempts")
+		}
+
+		c.currentAttempt++
+		_, m, err := c.wsConn.ReadMessage()
+
+		if len(m) <= 10 {
+			log.Fatalf("It didn't work")
+		}
+
+		if err != nil {
+			log.Printf("error while reading message: %v", err)
+		}
+
+		event := Payload{}
+		json.Unmarshal(m, &event)
+
+		log.Printf("Got payload: %+v", event)
+
+		if event.Operation == 9 {
+			c.Unlock()
+			res, _ := strconv.ParseBool(string(event.RawData))
+			log.Fatalf("Can't resume, payload \"d\": %v", res)
+		}
+
+		if event.Operation == 0 {
+			c.Unlock()
+			log.Println("Successfully resumed.")
+
+			c.state = 1
+
+			go c.listen(c.interrupt)
+			go c.heartbeat(c.heartbeatInterval, c.interrupt)
+
+			go c.handleEvent(event)
+
+			return nil
+		}
+
+		c.Unlock()
+		wait := time.Duration(5)
+		log.Println("Retryig in ", wait)
+		time.Sleep(time.Second * wait)
+		wait *= 2
+		if wait > 300 {
+			wait = 300
+		}
+	}
 
 }
 
-func (c *Client) Reconnect() {
-
-}
-
-func (c *Client) updatePresence() {
+func (c *Client) UpdatePresence() {
 
 }
 
 func (c *Client) Stop() error {
+
+	if c.state == 0 || c.state == 2 {
+		return errors.New("application already stopped")
+	}
 
 	if c.LogLevel >= 4 {
 		log.Println("Commiting suicide!")
@@ -443,21 +617,33 @@ func (c *Client) Stop() error {
 	c.interrupt <- 4
 	c.interrupt <- 4
 
-	c.state = 2
+	if c.state != 3 {
+		c.state = 2
+	} else {
+		return errors.New("called interrupt")
+	}
 
-	err := c.wsConn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(1000, ""))
+	err := c.wsConn.WriteControl(websocket.CloseMessage, websocket.FormatCloseMessage(1000, ""), time.Now().Add(time.Second*10))
 	if err != nil {
+		if c.LogLevel >= 4 {
+			log.Println("Error while closing connection", err)
+		}
 		return err
 	}
 
+	c.wsConn.ReadMessage()
+
 	if err := c.wsConn.Close(); err != nil {
+		if c.LogLevel >= 4 {
+			log.Println("Error while closing connection", err)
+		}
 		return err
 	}
 
 	c.wsConn = nil
 
 	if c.LogLevel >= 4 {
-		log.Println("Stop function ended!")
+		log.Printf("Stop function ended!\nWSConn: %v\nState: %v", c.wsConn, c.state)
 	}
 	return nil
 }
@@ -472,6 +658,10 @@ func (c *Client) init(token string) error {
 
 	c.Lock()
 	c.state = 1
+
+	if c.ReconnectMaxAttempts == 0 {
+		c.ReconnectMaxAttempts = 10
+	}
 
 	if c.httpClient == nil {
 		c.httpClient = &http.Client{}
@@ -496,3 +686,10 @@ func (c *Client) init(token string) error {
 
 	return nil
 }
+
+// TODO: func register slash commnad
+// TODO: func get guild
+// TODO: func get guilds
+// TODO: func get user
+// TODO: func get DMChannel
+// TODO: func IsMe(u *User) bool

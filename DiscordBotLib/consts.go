@@ -30,7 +30,8 @@ const (
 
 // TODO: Add Event types constants
 const (
-	EventReady = "READY"
+	EventReady   = "READY"
+	EventResumed = "RESUMED"
 
 	EventApplicationCommandCreate = "APPLICATION_COMMAND_CREATE"
 	EventApplicationCommandUpdate = "APPLICATION_COMMAND_UPDATE"
@@ -97,7 +98,28 @@ const (
 	EventGuildMembersChunk = "GUILD_MEMBERS_CHUNK"
 )
 
+const (
+	GuildFetureAnimatedIcon     = "ANIMATED_ICON"
+	GuildFetureBanner           = "BANNER"
+	GuildFetureCommerce         = "COMMERCE"
+	GuildFetureCommunity        = "COMMUNITY"
+	GuildFetureDiscoverable     = "DISCOVERABLE"
+	GuildFetureFeaturable       = "FEATURABLE"
+	GuildFetureInviteSplash     = "INVITE_SPLASH"
+	GuildFetureMembershipScreen = "MEMBER_VERIFICATION_GATE_ENABLED"
+	GuildFetureNews             = "NEWS"
+	GuildFeturePartnered        = "PARTNERED"
+	GuildFeturePreview          = "PREVIEW_ENABLED"
+	GuildFetureVanityURL        = "VANITY_URL"
+	GuildFetureVerified         = "VERIFIED"
+	GuildFetureVIPRegion        = "VIP_REGIONS"
+	GuildFetureWelcomeScreen    = "WELCOME_SCREEN_ENABLED"
+	GuildFetureTicketedEvents   = "TICKETED_EVENTS_ENABLED"
+	GuildFetureMonetization     = "MONETIZATION_ENABLED"
+	GuildFetureMoreStickers     = "MORE_STICKERS"
+	GuildFeture3DaysThreads     = "THREE_DAY_THREAD_ARCHIVE"
+	GuildFeture7DaysThreads     = "SEVEN_DAY_THREAD_ARCHIVE"
+	GuildFeturePrivateThreads   = "PRIVATE_THREADS"
+)
+
 // TODO: Add gateway constants
-// TODO: Add Channel types
-// TODO: Add message types
-// TODO: Add activity types
