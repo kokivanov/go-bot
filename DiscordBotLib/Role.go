@@ -10,6 +10,8 @@ type Role struct {
 	Managed     bool       `json:"managed"`
 	Metionable  bool       `json:"mentionable"`
 	RoleTag     *[]RoleTag `json:"tags,omitempty"`
+
+	ClientPTR *Client `json:"-"`
 }
 
 type RoleTag struct {

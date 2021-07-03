@@ -58,3 +58,83 @@ func (or OnSlashCommandDelete) Handle(c *Client, i interface{}) {
 func (or OnSlashCommandDelete) Type() string {
 	return EventApplicationCommandDelete
 }
+
+type OnChannelCreate func(*Client, Channel)
+
+func (or OnChannelCreate) Handle(c *Client, i interface{}) {
+	or(c, i.(Channel))
+}
+
+func (or OnChannelCreate) Type() string {
+	return EventChannelCreate
+}
+
+type OnChannelUpdate func(*Client, Channel)
+
+func (or OnChannelUpdate) Handle(c *Client, i interface{}) {
+	or(c, i.(Channel))
+}
+
+func (or OnChannelUpdate) Type() string {
+	return EventChannelUpdate
+}
+
+type OnChannelDelete func(*Client, Channel)
+
+func (or OnChannelDelete) Handle(c *Client, i interface{}) {
+	or(c, i.(Channel))
+}
+
+func (or OnChannelDelete) Type() string {
+	return EventChannelDelete
+}
+
+type OnChannelPinsUpdate func(*Client, ChannelPinsUpdate)
+
+func (or OnChannelPinsUpdate) Handle(c *Client, i interface{}) {
+	or(c, i.(ChannelPinsUpdate))
+}
+
+func (or OnChannelPinsUpdate) Type() string {
+	return EventChannelPinsUpdate
+}
+
+type OnThreadCreate func(*Client, Channel)
+
+func (or OnThreadCreate) Handle(c *Client, i interface{}) {
+	or(c, i.(Channel))
+}
+
+func (or OnThreadCreate) Type() string {
+	return EventThreadCreate
+}
+
+type OnThreadUpdate func(*Client, Channel)
+
+func (or OnThreadUpdate) Handle(c *Client, i interface{}) {
+	or(c, i.(Channel))
+}
+
+func (or OnThreadUpdate) Type() string {
+	return EventThreadUpdate
+}
+
+type OnThreadDelete func(*Client, Channel)
+
+func (or OnThreadDelete) Handle(c *Client, i interface{}) {
+	or(c, i.(Channel))
+}
+
+func (or OnThreadDelete) Type() string {
+	return EventThreadDelete
+}
+
+type OnThreadListSync func(*Client, ThreadListSync)
+
+func (or OnThreadListSync) Handle(c *Client, i interface{}) {
+	or(c, i.(ThreadListSync))
+}
+
+func (or OnThreadListSync) Type() string {
+	return EventThreadListSync
+}

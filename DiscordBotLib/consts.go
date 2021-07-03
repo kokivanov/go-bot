@@ -1,15 +1,30 @@
 package DiscordBotLib
 
+import "fmt"
+
 const APIVersion = 9
 const GatewayVersion = 9
 const GatewayEncoding = "json"
 const LibName = "Koki's discord lib"
+const APIContentType = "application/json"
+const APIFileContentType = "multipart/form-data"
 
 const (
-	APIURL             = "https://discord.com/api"
-	ImageBaseUrl       = "https://cdn.discordapp.com/"
-	GetGatewayEndpoint = "/gateway"
+	APIURL               = "https://discord.com/api"
+	ImageBaseUrl         = "https://cdn.discordapp.com/"
+	GetGatewayEndpoint   = "/gateway"
+	ChannelsEndpoint     = "/channels/"
+	POSTMessagesEndpoint = "/messages"
+	GETMessagesEndpoint  = "/messages/"
 )
+
+var APIGetChannelEndpoint = func(ChannelID Snowflake) string {
+	return APIURL + fmt.Sprintf("/v%v", APIVersion) + ChannelsEndpoint + string(ChannelID)
+}
+
+var APISendMessageEndpoint = func(ChannelID Snowflake) string {
+	return APIURL + fmt.Sprintf("/v%v", APIVersion) + ChannelsEndpoint + string(ChannelID) + POSTMessagesEndpoint
+}
 
 const (
 	RichEmbed    = "rich"

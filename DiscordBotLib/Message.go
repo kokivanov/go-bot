@@ -1,9 +1,15 @@
 package DiscordBotLib
 
+import (
+	"encoding/json"
+	"errors"
+	"log"
+)
+
 type Message struct {
 	ID                  Snowflake             `json:"id"`
-	ChannelID           int                   `json:"channel_id"`
-	GuildID             *int                  `json:"guild_id,omitempty"`
+	ChannelID           Snowflake             `json:"channel_id"`
+	GuildID             Snowflake             `json:"guild_id,omitempty"`
 	Author              User                  `json:"author"`
 	GuildMember         *GuildMember          `json:"member,omitempty"`
 	Content             string                `json:"content"`
@@ -12,18 +18,18 @@ type Message struct {
 	TTS                 bool                  `json:"tts"`
 	MentionEveryone     bool                  `json:"mention_everyone"`
 	Mentions            []User                `json:"mentions"`
-	MentionRoles        []int                 `json:"mention_roles"`
+	MentionRoles        []Snowflake           `json:"mention_roles"`
 	MentionChannels     *[]ChannelMention     `json:"mention_channels,omitempty"`
 	Attachments         []Attachment          `json:"attachments"`
 	Embeds              []Embed               `json:"embeds"`
 	Reactions           *[]Reaction           `json:"reactions,omitempty"`
 	Nonce               string                `json:"nonce,omitempty"`
 	Pinned              bool                  `json:"pinned"`
-	WebhookID           *int                  `json:"webhook_id,omitempty"`
-	Type                int                   `json:"type"` // TODO: Make constants for message types
+	WebhookID           *Snowflake            `json:"webhook_id,omitempty"`
+	Type                int                   `json:"type"`
 	Activity            *MessageActivity      `json:"activity,omitempty"`
 	Application         *Application          `json:"application,omitempty"`
-	ApplicationID       *int                  `json:"application_id,omitempty"`
+	ApplicationID       *Snowflake            `json:"application_id,omitempty"`
 	MessageReference    *MessageReference     `json:"message_reference,omitempty"`
 	Flags               *int                  `json:"flags,omitempty"`
 	ReferencedMessage   *Message              `json:"referenced_message,omitempty"`
@@ -102,4 +108,85 @@ type ChannelMention struct { // TODO: omitempty
 	GuildID Snowflake `json:"guild_id"`
 	Type    int       `json:"type"`
 	Name    string    `json:"string"`
+}
+
+type MessageParams struct {
+	Content          string           `json:"content,omitempty"`
+	TTS              *bool            `json:"tts,omitempty"`
+	File             interface{}      `json:"file,omitempty"`
+	Embeds           []Embed          `json:"embeds,omitempty"`
+	PayloadJson      string           `json:"payload_json,omitempty"`
+	AllowedMentions  *bool            `json:"allowed_mentions,omitempty"`
+	MessageReference MessageReference `json:"message_reference,omitempty"`
+	Components       []Component      `json:"components,omitempty"`
+}
+
+func (m *Message) GetChannel() (*Channel, error) {
+	if m.ChannelID == "" {
+		return nil, errors.New("invalid channel id")
+	}
+
+	if b, err := m.ClientPTR.makeRequest("GET", APIGetChannelEndpoint(m.ChannelID), nil); err != nil {
+		return nil, err
+	} else {
+		ch := Channel{}
+		if err = json.Unmarshal(b, &ch); err != nil {
+			return nil, err
+		}
+
+		return &ch, nil
+	}
+}
+
+// TODO: Delete
+// func (m *Message) Delete() (*Message, error) {
+
+// }
+
+// TODO: Edit
+
+func (m *Message) Reply(content *string, tts bool, file interface{}, embeds *[]Embed, allowedMentions *bool, components *[]Component) (*Message, error) { // TODO: File handle
+	if m.ChannelID == "" {
+		return nil, errors.New("invalid channel id")
+	}
+
+	M := MessageParams{}
+
+	switch {
+	case content != nil && file == nil && embeds == nil:
+		M.Content = *content
+	case content == nil && file == nil && embeds != nil:
+		M.Embeds = *embeds
+	default:
+		return nil, errors.New("must specify only file or only embed or only content")
+	}
+
+	switch {
+	case allowedMentions != nil:
+		M.AllowedMentions = allowedMentions
+		fallthrough
+	case components != nil:
+		M.Components = *components
+	}
+
+	M.MessageReference = MessageReference{
+		ChannelID: m.ChannelID,
+		GuildID:   m.GuildID,
+		MessageID: m.ID,
+	}
+
+	if m.ClientPTR.LogLevel >= LogWarnings {
+		log.Println("Sending reply")
+	}
+
+	if b, err := m.ClientPTR.makeRequest("POST", APISendMessageEndpoint(m.ChannelID), M); err != nil {
+		return nil, err
+	} else {
+		ch := Message{}
+		if err = json.Unmarshal(b, &ch); err != nil {
+			return nil, err
+		}
+
+		return &ch, nil
+	}
 }

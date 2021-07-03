@@ -9,8 +9,24 @@ import (
 	dbl "github.com/kokivanov/go-bot/DiscordBotLib"
 )
 
+const prefix = "a-"
+
 func OnMessage(c *dbl.Client, m dbl.Message) {
-	fmt.Printf("Got message from %s: %s\n", m.Author.Username, m.Content)
+	fmt.Printf("%v: Got message from %s: %s\n", m.Timestamp.ToTimeObject().UTC(), m.Author.Username, m.Content)
+
+	s := 2
+	g := "PONG! Have a button!"
+	if m.Content == prefix+"ping" {
+		m.Reply(&g, false, nil, nil, nil, &[]dbl.Component{{
+			Type: 1,
+			Components: &[]dbl.Component{{
+				Type:     2,
+				Label:    "CLICK ME!!!!",
+				Style:    &s,
+				CustomID: "kokibutton",
+			}},
+		}})
+	}
 }
 
 func OnReady(c *dbl.Client, r dbl.Ready) {

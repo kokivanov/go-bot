@@ -26,39 +26,25 @@ type Component struct {
 	Components *[]Component `json:"components,omitempty"`
 }
 
-type GatewayUpdatePresence struct { // TODO: omitempty
+type GatewayUpdatePresence struct {
 	Since      *int             `json:"since"`
 	Activities []ActivityObject `json:"activities"`
 	Status     string           `json:"status"`
 	AFK        bool             `json:"afk"`
 }
 
-type Resume struct { // TODO: omitempty
-	Op   int           `json:"op"`
-	Data ResumePayload `json:"d"`
+type RequestGuildMembers struct {
+	Op   int                        `json:"op"`
+	Data RequestGuildMembersPayload `json:"d"`
 }
 
-type ResumePayload struct { // TODO: omitempty
-	Token     string `json:"token"`
-	SessionID string `json:"session_id"`
-	Sequence  int    `json:"seq"`
-}
-
-type RequestGuildMembersQuery struct { // TODO: omitempty
-	Op   int                             `json:"op"`
-	Data RequestGuildMembersPayloadQuery `json:"d"`
-}
-
-type RequestGuildMembersID struct { // TODO: omitempty
-	Op   int                             `json:"op"`
-	Data RequestGuildMembersPayloadQuery `json:"d"`
-}
-
-type RequestGuildMembersPayloadQuery struct { // TODO: omitempty
-	GuildID   Snowflake `json:"guild_id"`
-	Query     string    `json:"query"`
-	Limit     int       `json:"limit"`
-	Presences bool      `json:"presences"`
+type RequestGuildMembersPayload struct {
+	GuildID   Snowflake    `json:"guild_id"`
+	Query     string       `json:"query,omitempty"`
+	Limit     int          `json:"limit"`
+	Presences *bool        `json:"presences,omitempty"`
+	UserIDs   *[]Snowflake `json:"user_ids,omitempty"`
+	Nonce     string       `json:"nonce,omitempty"`
 }
 
 type Payload struct { // TODO: omitempty
@@ -150,13 +136,23 @@ type Ready struct {
 	Application    *Application        `json:"application"`
 }
 
-// Represents User object
-// For more information look: https://discord.com/developers/docs/resources/user
+type ChannelPinsUpdate struct {
+	GuildID          *Snowflake        `json:"guild_id,omitempty"`
+	ChannelID        Snowflake         `json:"channel_id"`
+	LastPinTimestamp *ISO8601Timestamp `json:"last_pin_timestamp"`
+}
 
-// Client is a base structure that represents your whole bot and methods that are allowed to it
+type ThreadListSync struct {
+	GuildID    Snowflake      `json:"guild_id,omitempty"`
+	ChannelIDs *[]Snowflake   `json:"channel_ids"`
+	Threads    []Channel      `json:"threads"`
+	Members    []ThreadMember `json:"members"`
+}
 
-// TODO (Structs)
-// - Guild struct
-// - Message struct
-// - User struct
-// - Member struct
+type ThreadMemberUpdate struct {
+	ID                Snowflake       `json:"id"`
+	GuildID           Snowflake       `json:"guild_id"`
+	MemberCount       int             `json:"member_counts"`
+	AddedMembers      *[]ThreadMember `json:"added_members,omitempty"`
+	RemovedMembersIDs *[]Snowflake    `json:"removed_member_ids,omitempty"`
+}

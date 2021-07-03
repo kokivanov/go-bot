@@ -112,3 +112,7 @@ func (c *Client) getEventPayload(p Payload) interface{} { // TODO: Complete
 		return nil
 	}
 }
+
+func XOR(X bool, Y bool) bool {
+	return (X || Y) && !(X && Y)
+}

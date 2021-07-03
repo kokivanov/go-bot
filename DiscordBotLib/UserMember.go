@@ -1,5 +1,7 @@
 package DiscordBotLib
 
+// Represents User object
+// For more information look: https://discord.com/developers/docs/resources/user
 type User struct {
 	ID            Snowflake `json:"id"`
 	Username      string    `json:"username"`
@@ -31,3 +33,5 @@ type GuildMember struct {
 
 	ClientPTR *Client `json:"-"`
 }
+
+// TODO: IsBot

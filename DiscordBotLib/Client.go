@@ -52,6 +52,7 @@ type UpdatePresence struct {
 	AFK        bool              `json:"afk"`
 }
 
+// Client is a base structure that represents your whole bot and methods that are allowed to it
 type Client struct { // TODO: omitempty
 	// Mutex
 	sync.RWMutex
@@ -113,8 +114,11 @@ func (c *Client) Run(token string, wg *sync.WaitGroup) error {
 
 	err := c.Resume()
 
-	if err != nil && c.LogLevel >= LogWarnings {
+	if c.LogLevel >= LogWarnings {
 		log.Printf("Can't resume: %s", err.Error())
+	}
+
+	if err != nil {
 
 		c.interrupt = make(chan int)
 
@@ -441,9 +445,17 @@ func (c *Client) listen(ls <-chan int) {
 			log.Printf("Got %v event %v with sequence %v: %s", *event.Operation, event.Type, event.Sequence, string(event.RawData))
 		}
 
-		c.Lock()
-		c.lastSequence = event.Sequence
-		c.Unlock()
+		if event.Operation != nil || *event.Operation != 11 {
+			c.Lock()
+			c.lastSequence = event.Sequence
+			c.Unlock()
+		}
+
+		if *event.Operation == GatewayOpHeartbeatACK {
+			c.Lock()
+			c.lastHeartbeatACK = uint64(time.Now().Unix())
+			c.Unlock()
+		}
 
 		select {
 		case <-ls:
@@ -511,10 +523,7 @@ func (c *Client) handleEvent(payload Payload) {
 	if payload.Operation != nil {
 
 		switch *payload.Operation {
-		case GatewayOpHeartbeatACK:
-			c.Lock()
-			c.lastHeartbeatACK = uint64(time.Now().Unix())
-			c.Unlock()
+
 		case GatewayOpDispatch:
 			if ev, ok := c.handlers[payload.Type]; !ok && c.LogLevel >= LogWarnings {
 				log.Printf("Can't handle event %s.\n", payload.Type)
@@ -734,8 +743,9 @@ func (c *Client) init(token string) error {
 		c.handlers = make(map[string]*EventHandler)
 	}
 
-	c.authHeader.Add("Authorization", ("Bot " + token))
+	c.authHeader.Add("authorization", ("Bot " + token))
 	c.authHeader.Add("User-Agent", "DiscordBot (\"https://github.com/kokivanov/go-bot/DiscordBotLib\", DoscordBotLib)")
+	c.authHeader.Add("Content-Type", APIContentType)
 	err := c.connect()
 	if err != nil {
 		return err
@@ -746,9 +756,89 @@ func (c *Client) init(token string) error {
 	return nil
 }
 
-// TODO: func register slash commnad
+// TODO: Rate limit
+// TODO: File upload
+func (c *Client) makeRequest(Method string, url string, b interface{}) ([]byte, error) {
+
+	var body []byte
+	var err error
+
+	if b != nil {
+		body, err = json.Marshal(b)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	req, err := http.NewRequest(Method, url, bytes.NewBuffer(body))
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header = *c.authHeader
+
+	if c.httpClient == nil {
+		c.httpClient = &http.Client{}
+	}
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+
+	defer func(r *http.Response) {
+		if err := r.Body.Close(); err != nil {
+			log.Printf("Can't close response body: %v", err.Error())
+		}
+	}(resp)
+
+	if c.LogLevel >= LogAll {
+		log.Printf("Request answer with %v", resp.StatusCode)
+	}
+
+	r, err := io.ReadAll(resp.Body)
+	if err != nil {
+		log.Print(err)
+		return nil, err
+	}
+
+	return r, nil
+}
+
+func (c *Client) SendTest() {
+	fmt.Println("Sending test message")
+	s := 1
+	tts := false
+	M := MessageParams{
+		Content: "Test",
+		Components: []Component{{
+			Type: 1,
+			Components: &[]Component{{
+				Type:     2,
+				Label:    "Click me!",
+				Style:    &s,
+				CustomID: "koki-12312321",
+			}},
+		}},
+		TTS: &tts,
+	}
+	if res, err := c.makeRequest("POST", APISendMessageEndpoint("765643536283467777"), M); err != nil {
+		fmt.Println(err)
+	} else {
+		fmt.Println(string(res))
+	}
+}
+
+// TODO: func register global slash commnad
 // TODO: func get guild
 // TODO: func get guilds
 // TODO: func get user
 // TODO: func get DMChannel
-// TODO: func IsMe(u *User) bool
+
+func (c *Client) IsMe(u *User) bool {
+	return (c.Me.ID == u.ID)
+}
+
+func (c *Client) IsMyID(id Snowflake) bool {
+	return (c.Me.ID == id)
+}
