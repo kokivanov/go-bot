@@ -62,7 +62,7 @@ type RequestGuildMembersPayloadQuery struct { // TODO: omitempty
 }
 
 type Payload struct { // TODO: omitempty
-	Operation int             `json:"op"`
+	Operation *int            `json:"op"`
 	Sequence  int64           `json:"s,omitempty"`
 	Type      string          `json:"t,omitempty"`
 	RawData   json.RawMessage `json:"d,omitempty"`
@@ -70,8 +70,8 @@ type Payload struct { // TODO: omitempty
 }
 
 type Heartbeat struct { // TODO: omitempty
-	Op int    `json:"op"`
-	D  *int64 `json:"d"`
+	Op int   `json:"op"`
+	D  int64 `json:"d"`
 
 	ClientPTR *Client `json:"-"`
 }

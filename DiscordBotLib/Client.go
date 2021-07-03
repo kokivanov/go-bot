@@ -20,6 +20,7 @@ import (
 	"os/signal"
 	"runtime"
 	"strconv"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -94,13 +95,12 @@ func (c *Client) setupCloseHandler() {
 	cc := make(chan os.Signal, 3)
 	signal.Notify(cc, os.Interrupt, syscall.SIGTERM)
 	<-cc
+	c.Stop(3)
 	if c.state == 2 {
 		c.wG.Done()
 		c.wG.Done()
 	}
-	c.state = 3
 	fmt.Println("\r- Ctrl+C pressed in Terminal")
-	c.Stop()
 }
 
 /* Runs your bot with provided token
@@ -116,7 +116,7 @@ func (c *Client) Run(token string, wg *sync.WaitGroup) error {
 	if err != nil && c.LogLevel >= LogWarnings {
 		log.Printf("Can't resume: %s", err.Error())
 
-		c.interrupt = make(chan int, 2)
+		c.interrupt = make(chan int)
 
 		c.wG.Add(2)
 		//go c.setupCloseHandler()
@@ -269,7 +269,7 @@ func (c *Client) connect() error {
 		log.Printf("Got payload:\n%+v\n", e)
 	}
 
-	if e.Operation != GatewayOpHello {
+	if *e.Operation != GatewayOpHello {
 		log.Fatalf("Expected Opcode 10 Hello, but got %d", e.Operation)
 	}
 
@@ -324,11 +324,16 @@ func (c *Client) heartbeat(interval int, ls <-chan int) { // TODO: Make zombied 
 				fmt.Println("Still heartbeating!")
 			}
 
-			if c.wsConn == nil {
+			if c.state != 1 || c.wsConn == nil {
 				if c.state == 3 {
+					if c.state == 3 {
+						c.wG.Done()
+					}
+					if c.LogLevel >= LogWarnings {
+						log.Printf("Heartbeat: State: %v, calling wg.Done()", c.state)
+					}
 					c.wG.Done()
 				}
-
 				return
 			}
 
@@ -336,15 +341,8 @@ func (c *Client) heartbeat(interval int, ls <-chan int) { // TODO: Make zombied 
 				log.Printf("Sending hertbeat sequnce %d", c.lastSequence)
 			}
 
-			if c.state != 1 {
-				if c.state == 3 {
-					c.wG.Done()
-				}
-				return
-			}
-
 			c.wsMutex.Lock()
-			err := c.wsConn.WriteJSON(Heartbeat{Op: 1, D: &c.lastSequence})
+			err := c.wsConn.WriteJSON(Heartbeat{Op: 1, D: c.lastSequence})
 			c.wsMutex.Unlock()
 
 			if err != nil {
@@ -353,8 +351,11 @@ func (c *Client) heartbeat(interval int, ls <-chan int) { // TODO: Make zombied 
 			}
 
 		case <-ls:
-			log.Println("Called interrupt, heartbeating terminated. Number of goroutines running: ", runtime.NumGoroutine())
+			log.Println("Called interrupt, heartbeating terminated.")
 			if c.state == 3 {
+				if c.LogLevel >= LogWarnings {
+					log.Printf("Heartbeat: State: %v, calling wg.Done()", c.state)
+				}
 				c.wG.Done()
 			}
 			return
@@ -387,6 +388,9 @@ func (c *Client) listen(ls <-chan int) {
 		if c.state != 1 {
 			log.Println("Client isn't in working state")
 			if c.state == 3 {
+				if c.LogLevel >= LogWarnings {
+					log.Printf("Listen: State: %v, calling wg.Done()", c.state)
+				}
 				c.wG.Done()
 				return
 			}
@@ -399,13 +403,29 @@ func (c *Client) listen(ls <-chan int) {
 
 		mt, m, err := c.wsConn.ReadMessage()
 		if err != nil {
+
+			log.Printf("App in %v state", c.state)
+
+			if c.state == 1 {
+				c.Resume()
+				return
+			}
+
 			log.Printf("Error occured while listening to message!\n %v", err.Error())
 			if c.state == 3 {
+				if c.LogLevel >= LogWarnings {
+					log.Printf("Listen: State: %v, calling wg.Done()", c.state)
+				}
 				c.wG.Done()
 				return
 			}
 
 			if c.state == 2 {
+				return
+			}
+
+			if strings.Contains(err.Error(), "1000") {
+				log.Println("Listening to closed websocket connection")
 				return
 			}
 		}
@@ -418,7 +438,7 @@ func (c *Client) listen(ls <-chan int) {
 
 		json.Unmarshal(m, &event)
 		if c.LogLevel >= LogAll {
-			log.Printf("Got %v event %v with sequence %v: %s", event.Operation, event.Type, event.Sequence, string(event.RawData))
+			log.Printf("Got %v event %v with sequence %v: %s", *event.Operation, event.Type, event.Sequence, string(event.RawData))
 		}
 
 		c.Lock()
@@ -426,11 +446,12 @@ func (c *Client) listen(ls <-chan int) {
 		c.Unlock()
 
 		select {
-		default:
-			go c.handleEvent(event)
 		case <-ls:
 			log.Println("Called interrupt, listening terminated. Number of goroutines running: ", runtime.NumGoroutine())
 			if c.state == 3 {
+				if c.LogLevel >= LogWarnings {
+					log.Printf("Listen: State: %v, calling wg.Done()", c.state)
+				}
 				c.wG.Done()
 				return
 			}
@@ -439,7 +460,11 @@ func (c *Client) listen(ls <-chan int) {
 				return
 			}
 			return
+
+		default:
+			go c.handleEvent(event)
 		}
+
 	}
 }
 
@@ -483,20 +508,24 @@ func (c *Client) identify() error {
 
 // Will be called when listiner gets event
 func (c *Client) handleEvent(payload Payload) {
-	switch payload.Operation {
-	case GatewayOpHeartbeatACK:
-		c.Lock()
-		c.lastHeartbeatACK = uint64(time.Now().Unix())
-		c.Unlock()
-	case GatewayOpDispatch:
-		if ev, ok := c.handlers[payload.Type]; !ok && c.LogLevel >= LogWarnings {
-			log.Printf("Can't handle event %s.\n", payload.Type)
-		} else {
-			if c.LogLevel >= LogMessages {
-				log.Printf("Handling event %s.\n", payload.Type)
+	if payload.Operation != nil {
+
+		switch *payload.Operation {
+		case GatewayOpHeartbeatACK:
+			c.Lock()
+			c.lastHeartbeatACK = uint64(time.Now().Unix())
+			c.Unlock()
+		case GatewayOpDispatch:
+			if ev, ok := c.handlers[payload.Type]; !ok && c.LogLevel >= LogWarnings {
+				log.Printf("Can't handle event %s.\n", payload.Type)
+			} else {
+				if c.LogLevel >= LogMessages {
+					log.Printf("Handling event %s.\n", payload.Type)
+				}
+				(*ev).Handle(c, c.getEventPayload(payload))
 			}
-			(*ev).Handle(c, c.getEventPayload(payload))
 		}
+
 	}
 
 }
@@ -512,7 +541,7 @@ type resume struct {
 
 func (c *Client) Resume() error {
 
-	c.Stop()
+	c.Stop(2)
 
 	c.currentAttempt = 0
 
@@ -527,71 +556,98 @@ func (c *Client) Resume() error {
 	}
 
 	for {
-		c.connect()
 
-		c.Lock()
-		res := resume{}
-		res.Op = GatewayOpResume
-		res.Data.Sequence = int64(c.lastSequence)
-		res.Data.SessionID = c.SessionID
-		res.Data.Token = c.token
-
-		c.wsMutex.Lock()
-		log.Printf("Resuming with struct: \n%#v\n", res)
-		err := c.wsConn.WriteJSON(res)
-		c.wsMutex.Unlock()
-
+		err := c.getGateway()
 		if err != nil {
-			log.Printf("Error occured while resumin, attempt %v", c.currentAttempt)
+			log.Printf("Error occured while retrying: %v", err)
 		}
 
-		if c.ReconnectMaxAttempts <= c.currentAttempt {
-			c.Unlock()
-			c.wG.Done()
-			c.wG.Done()
-			return fmt.Errorf("hit max reconnect attempts")
-		}
-
-		c.currentAttempt++
-		_, m, err := c.wsConn.ReadMessage()
-
-		if len(m) <= 10 {
-			log.Fatalf("It didn't work")
-		}
-
+		err = c.connect()
 		if err != nil {
-			log.Printf("error while reading message: %v", err)
-		}
+			log.Printf("Error occured while retrying: %v", err)
+		} else {
+			c.Lock()
+			res := resume{}
+			res.Op = GatewayOpResume
+			res.Data.Sequence = int64(c.lastSequence)
+			res.Data.SessionID = c.SessionID
+			res.Data.Token = c.token
 
-		event := Payload{}
-		json.Unmarshal(m, &event)
+			c.wsMutex.Lock()
+			log.Printf("Resuming with struct: \n%#v\n", res)
+			err = c.wsConn.WriteJSON(res)
+			c.wsMutex.Unlock()
 
-		log.Printf("Got payload: %+v", event)
+			if err != nil {
+				log.Printf("Error occured while resumin, attempt %v", c.currentAttempt)
+			}
 
-		if event.Operation == 9 {
+			if c.ReconnectMaxAttempts <= c.currentAttempt {
+				c.Unlock()
+				c.wG.Done()
+				c.wG.Done()
+				return fmt.Errorf("hit max reconnect attempts")
+			}
+
+			c.currentAttempt++
+			_, m, err := c.wsConn.ReadMessage()
+
+			if len(m) <= 10 {
+				log.Fatalf("It didn't work")
+			}
+
+			if err != nil {
+				log.Printf("error while reading message: %v", err)
+			}
+
+			event := Payload{}
+			json.Unmarshal(m, &event)
+
+			log.Printf("Got payload: %+v", event)
+
+			if event.Operation != nil {
+
+				if *event.Operation == 9 {
+					c.Unlock()
+					res, _ := strconv.ParseBool(string(event.RawData))
+					log.Printf("Can't resume, payload \"d\": %v", res)
+
+					err := c.identify()
+					if err == nil {
+						c.state = 1
+
+						go c.listen(c.interrupt)
+						go c.heartbeat(c.heartbeatInterval, c.interrupt)
+
+						go c.handleEvent(event)
+
+						return nil
+					}
+				}
+
+				if *event.Operation == 0 {
+					c.Unlock()
+					log.Println("Successfully resumed.")
+
+					c.state = 1
+
+					go c.listen(c.interrupt)
+					go c.heartbeat(c.heartbeatInterval, c.interrupt)
+
+					go c.handleEvent(event)
+
+					return nil
+				}
+
+			}
+
 			c.Unlock()
-			res, _ := strconv.ParseBool(string(event.RawData))
-			log.Fatalf("Can't resume, payload \"d\": %v", res)
+
 		}
 
-		if event.Operation == 0 {
-			c.Unlock()
-			log.Println("Successfully resumed.")
-
-			c.state = 1
-
-			go c.listen(c.interrupt)
-			go c.heartbeat(c.heartbeatInterval, c.interrupt)
-
-			go c.handleEvent(event)
-
-			return nil
-		}
-
-		c.Unlock()
-		wait := time.Duration(5)
+		wait := time.Duration(time.Second * 5)
 		log.Println("Retryig in ", wait)
-		time.Sleep(time.Second * wait)
+		time.Sleep(wait)
 		wait *= 2
 		if wait > 300 {
 			wait = 300
@@ -604,9 +660,9 @@ func (c *Client) UpdatePresence() {
 
 }
 
-func (c *Client) Stop() error {
+func (c *Client) Stop(code int) error {
 
-	if c.state == 0 || c.state == 2 {
+	if c.state == 0 || c.state == 2 || c.state == 3 {
 		return errors.New("application already stopped")
 	}
 
@@ -614,24 +670,27 @@ func (c *Client) Stop() error {
 		log.Println("Commiting suicide!")
 	}
 
-	c.interrupt <- 4
-	c.interrupt <- 4
-
-	if c.state != 3 {
-		c.state = 2
+	if code == 3 {
+		c.state = 3
 	} else {
-		return errors.New("called interrupt")
+		c.state = 2
 	}
+
+	c.interrupt <- 4
 
 	err := c.wsConn.WriteControl(websocket.CloseMessage, websocket.FormatCloseMessage(1000, ""), time.Now().Add(time.Second*10))
 	if err != nil {
 		if c.LogLevel >= 4 {
+			c.wsConn.Close()
 			log.Println("Error while closing connection", err)
 		}
 		return err
 	}
 
-	c.wsConn.ReadMessage()
+	_, m, _ := c.wsConn.ReadMessage()
+	if c.LogLevel >= LogWarnings {
+		log.Println(string(m))
+	}
 
 	if err := c.wsConn.Close(); err != nil {
 		if c.LogLevel >= 4 {
