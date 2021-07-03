@@ -40,5 +40,5 @@ func main() {
 	client.AddHandler(OnReady, dbl.EventReady)
 	fmt.Println(client.GetAvialableHandlers())
 
-	client.Run("NzAzOTYxNjE3NDM1NDU5NjE0.XqWNWA.hk4D3KldkkH6AOIlt-Fom8Ug8lk", nil)
+	client.Run("YOUR_TOKEN_HERE", nil)
 }
